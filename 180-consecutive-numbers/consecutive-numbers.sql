@@ -1,6 +1,29 @@
-SELECT DISTINCT l1.num AS ConsecutiveNums
-FROM Logs l1
-JOIN Logs l2 ON l1.id = l2.id - 1
-JOIN Logs l3 ON l1.id = l3.id - 2
-WHERE l1.num = l2.num AND l1.num = l3.num;
+WITH flags AS (
+    SELECT *,
+           CASE
+               WHEN num = LAG(num) OVER (ORDER BY id) THEN 0
+               ELSE 1
+           END AS is_new_group
+    FROM Logs
+),
+
+grouped AS (
+    SELECT *,
+           SUM(is_new_group) OVER (ORDER BY id) AS group_num
+    FROM flags
+),
+
+group_counts AS (
+    SELECT
+        group_num,
+        num,
+        COUNT(*) AS cnt
+    FROM grouped
+    GROUP BY group_num, num
+)
+
+SELECT DISTINCT num AS ConsecutiveNums
+FROM group_counts
+WHERE cnt >= 3;
+
 
